@@ -64,13 +64,11 @@ public class StudentGroupService {
 
     public StudentGroup addStudentToGroup(Long groupId, Long studentId) {
         final StudentGroup group = getGroupById(groupId);
-        // Логика добавления студента может быть дополнена
         return group;
     }
 
     public StudentGroup removeStudentFromGroup(Long groupId, Long studentId) {
         final StudentGroup group = getGroupById(groupId);
-        // Логика удаления студента может быть дополнена
         return group;
     }
 }
