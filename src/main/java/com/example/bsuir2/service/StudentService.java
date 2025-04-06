@@ -12,10 +12,12 @@ import java.util.List;
 public class StudentService {
     private final StudentRepository studentRepository;
     private final StudentGroupRepository groupRepository;
+    private final CacheService cacheService;
 
-    public StudentService(StudentRepository studentRepository, StudentGroupRepository groupRepository) {
+    public StudentService(StudentRepository studentRepository, StudentGroupRepository groupRepository, CacheService cacheService) {
         this.studentRepository = studentRepository;
         this.groupRepository = groupRepository;
+        this.cacheService = cacheService;
     }
 
     public List<Student> getAllStudents() {
@@ -23,28 +25,38 @@ public class StudentService {
     }
 
     public Student getStudentById(Long id) {
-        return studentRepository.findById(id)
+        Student cached = (Student) cacheService.getFromCache(id);
+        if (cached != null) return cached;
+
+        Student student = studentRepository.findById(id)
                 .orElseThrow(() -> new RuntimeException("Студент не найден"));
+        cacheService.putInCache(id, student);
+        return student;
     }
 
     public Student createStudent(Student student) {
-        return studentRepository.save(student);
+        Student saved = studentRepository.save(student);
+        cacheService.putInCache(saved.getId(), saved);
+        return saved;
     }
 
     public Student updateStudent(Long id, Student updatedStudent) {
-        final Student student = getStudentById(id);
+        Student student = getStudentById(id);
         student.setName(updatedStudent.getName());
         student.setEmail(updatedStudent.getEmail());
-        return studentRepository.save(student);
+        Student saved = studentRepository.save(student);
+        cacheService.putInCache(id, saved);
+        return saved;
     }
 
     public void deleteStudent(Long id) {
         studentRepository.deleteById(id);
+        cacheService.removeFromCache(id);
     }
 
     public Student addStudentToGroup(Long studentId, Long groupId) {
-        final Student student = getStudentById(studentId);
-        final StudentGroup group = groupRepository.findById(groupId)
+        Student student = getStudentById(studentId);
+        StudentGroup group = groupRepository.findById(groupId)
                 .orElseThrow(() -> new RuntimeException("Группа не найдена"));
 
         student.getGroups().add(group);
@@ -52,13 +64,16 @@ public class StudentService {
 
         studentRepository.save(student);
         groupRepository.save(group);
+        
+        cacheService.putInCache(studentId, student);
+        cacheService.putInCache(groupId, group);
 
         return student;
     }
 
     public Student removeStudentFromGroup(Long studentId, Long groupId) {
-        final Student student = getStudentById(studentId);
-        final StudentGroup group = groupRepository.findById(groupId)
+        Student student = getStudentById(studentId);
+        StudentGroup group = groupRepository.findById(groupId)
                 .orElseThrow(() -> new RuntimeException("Группа не найдена"));
 
         student.getGroups().remove(group);
@@ -66,6 +81,9 @@ public class StudentService {
 
         studentRepository.save(student);
         groupRepository.save(group);
+
+        cacheService.putInCache(studentId, student);
+        cacheService.putInCache(groupId, group);
 
         return student;
     }
